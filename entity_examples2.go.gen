@@ -1,0 +1,32 @@
+package domain
+
+import (
+	"database/sql"
+	dbutil "github.com/egon12/dbutil"
+)
+
+type PostgreEntityExamples2Repository struct {
+	*sql.DB
+}
+
+func (r PostgreEntityExamples2Repository) Select(where string, limit, offset int) ([]dbutil.EntityExamples2, error) {
+	result := []dbutil.EntityExamples2{}
+	rows, err := r.Query("SELECT id, name, age, address FROM entity_examples2 LIMIT $1 OFFSET $2", limit, offset)
+	if err != nil {
+		return result, err
+	}
+	for rows.Next() {
+		entity := dbutil.EntityExamples2{}
+		rows.Scan(&entity.ID, &entity.Name, &entity.Age, &entity.Address)
+		result = append(result, entity)
+	}
+	return result, err
+}
+func (r PostgreEntityExamples2Repository) Insert(entity dbutil.EntityExamples2) error {
+	_, err := r.Exec("INSERT INTO entity_examples2(name, age, address) VALUES ($1, $2, $3)", entity.Name, entity.Age, entity.Address)
+	return err
+}
+func (r PostgreEntityExamples2Repository) Update(entity dbutil.EntityExamples2) error {
+	_, err := r.Exec("UPDATE entity_examples2 SET name = $1, age = $2, address = $3 WHERE id = $4", entity.Name, entity.Age, entity.Address, entity.ID)
+	return err
+}
