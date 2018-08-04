@@ -23,7 +23,7 @@ func generateInsertQuery(entity reflect.Type) string {
 		}
 	}
 
-	return fmt.Sprintf("INSERT INTO %s(%s) VALUES (%s)", tableName, columnsSelect, fills)
+	return fmt.Sprintf("INSERT INTO %s(%s) VALUES (%s) RETURNING id", tableName, columnsSelect, fills)
 }
 
 // generateSelectQuery query generator

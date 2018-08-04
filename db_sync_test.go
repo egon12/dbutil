@@ -120,7 +120,7 @@ func TestCreateTable(t *testing.T) {
 		t.Error("It should be not error")
 	}
 
-	if MockDb.QueryValue != "CREATE TABLE entity_examples1 (id SERIAL, name VARCHAR(255));" {
+	if MockDb.QueryValue != "CREATE TABLE entity_examples1 (id SERIAL8, name VARCHAR(255));" {
 		t.Error("Wrong Query :", MockDb.QueryValue)
 	}
 
@@ -140,7 +140,7 @@ func TestDropTable(t *testing.T) {
 		t.Error("It should be not error")
 	}
 
-	if MockDb.QueryValue != "CREATE TABLE entity_examples1 (id SERIAL, name VARCHAR(255));" {
+	if MockDb.QueryValue != "CREATE TABLE entity_examples1 (id SERIAL8, name VARCHAR(255));" {
 		t.Error("Wrong Query :", MockDb.QueryValue)
 	}
 

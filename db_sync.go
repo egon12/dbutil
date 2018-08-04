@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 )
 
@@ -31,6 +32,18 @@ func InteractiveSync(entity interface{}) {
 			if err2 != nil {
 				fmt.Println(err2)
 			}
+		}
+	}
+}
+
+func ForceSync(entity interface{}) {
+	err := CheckTable(entity)
+	if err != nil {
+		fmt.Println(err)
+		DropTable(entity)
+		err2 := CreateTable(entity)
+		if err2 != nil {
+			fmt.Println(err2)
 		}
 	}
 }
@@ -131,12 +144,16 @@ func processField(field reflect.StructField) string {
 	switch field.Type.Kind() {
 	case reflect.Bool:
 		return processBoolean(field)
+	case reflect.Int:
+		return processInteger(field)
 	case reflect.Int32:
 		return processInteger32(field)
 	case reflect.Int64:
 		return processInteger64(field)
 	case reflect.String:
 		return processString(field)
+	default:
+		log.Printf("Cannot process %s field", field.Type.Kind())
 
 	}
 
@@ -144,11 +161,18 @@ func processField(field reflect.StructField) string {
 }
 
 func processPrimaryKey(field reflect.StructField) string {
-	return "id SERIAL"
+	if field.Type.Kind() != reflect.Int64 {
+		log.Printf("ID should be use int64")
+	}
+	return "id SERIAL8"
 }
 
 func processBoolean(field reflect.StructField) string {
 	return fmt.Sprintf("%s BOOL", ToSnakeCase(field.Name))
+}
+
+func processInteger(field reflect.StructField) string {
+	return fmt.Sprintf("%s INT", ToSnakeCase(field.Name))
 }
 
 func processInteger32(field reflect.StructField) string {

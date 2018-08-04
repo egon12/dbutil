@@ -17,7 +17,7 @@ func createDeleteFunc(entity reflect.Type) Code {
 
 	field := Id("entity").Dot("ID")
 
-	return createRepoFunction(entity, "Insert", params, returnType).Block(
+	return createRepoFunction(entity, "Delete", params, returnType).Block(
 		List(Id("_"), Err()).Op(":=").Id("r").Dot("ReadWrite").Dot("Exec").Call(query, field),
 		Return().Err(),
 	)

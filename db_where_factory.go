@@ -31,9 +31,11 @@ func generateWhereFactoryFunctions(entity reflect.Type) []Code {
 		field := entity.Field(i)
 		funcName := "Where" + field.Name
 		fieldName := "where" + field.Name + "Value"
+		fieldType := field.Type.String()
 
-		code := Func().Params(Id("w").Id(structName)).Id(funcName).Params(Id("value").Id(field.Type.String())).Block(
-			Id("w").Dot(fieldName).Op("=").Id("value"),
+		code := Func().Params(Id("w").Id(structName)).Id(funcName).Params(Id("value").Id(fieldType)).Block(
+			If(Id("w").Dot(fieldName).Op("==").Nil()).Block(Id("w").Dot(fieldName).Op("=").New(Id(fieldType))),
+			Op("*").Add().Id("w").Dot(fieldName).Op("=").Id("value"),
 		)
 
 		codes = append(codes, code)

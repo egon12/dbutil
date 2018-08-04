@@ -16,19 +16,19 @@ import (
 //
 func createInsertFunc(entity reflect.Type) Code {
 
-  params := []Code{
-    Id("entity").Qual(entity.PkgPath(), entity.Name()),
-  }
+	params := []Code{
+		Id("entity").Qual(entity.PkgPath(), entity.Name()),
+	}
 
-	returnType := []Code{Error()}
+	returnType := []Code{Qual(entity.PkgPath(), entity.Name()), Error()}
 
 	query := generateInsertQuery(entity)
 	queryLit := Lit(query)
 	fields := createInsertField(entity)
 
 	return createRepoFunction(entity, "Insert", params, returnType).Block(
-		List(Id("_"), Err()).Op(":=").Id("r").Dot("ReadWrite").Dot("Exec").Call(queryLit, fields),
-		Return().Err(),
+		Err().Op(":=").Id("r").Dot("ReadWrite").Dot("QueryRow").Call(queryLit, fields).Dot("Scan").Call(Op("&").Add().Id("entity").Dot("ID")),
+		Return().List(Id("entity"), Err()),
 	)
 }
 
