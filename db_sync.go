@@ -20,6 +20,7 @@ var Db *sql.DB
 func InteractiveSync(entity interface{}) {
 	err := CheckTable(entity)
 	if err != nil {
+		fmt.Println(err)
 		fmt.Print("Do you want to drop and recreate table entity? [y/n] :")
 		answer := ""
 		fmt.Scanln(&answer)
@@ -128,12 +129,14 @@ func processField(field reflect.StructField) string {
 	}
 
 	switch field.Type.Kind() {
-	case reflect.String:
-		return processString(field)
+	case reflect.Bool:
+		return processBoolean(field)
 	case reflect.Int32:
 		return processInteger32(field)
 	case reflect.Int64:
 		return processInteger64(field)
+	case reflect.String:
+		return processString(field)
 
 	}
 
@@ -142,6 +145,10 @@ func processField(field reflect.StructField) string {
 
 func processPrimaryKey(field reflect.StructField) string {
 	return "id SERIAL"
+}
+
+func processBoolean(field reflect.StructField) string {
+	return fmt.Sprintf("%s BOOL", ToSnakeCase(field.Name))
 }
 
 func processInteger32(field reflect.StructField) string {
