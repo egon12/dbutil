@@ -2,6 +2,7 @@ package dbutil
 
 import (
 	"database/sql/driver"
+	"errors"
 	"reflect"
 )
 
@@ -79,7 +80,17 @@ func (m MockDbDriver) Columns() []string {
 }
 
 func (m MockDbDriver) Next(dest []driver.Value) error {
+
+	if len(MockDb.Rows) == 0 {
+		return errors.New("Empty Rows, forgot to set the Rows?")
+	}
+
 	result := MockDb.Rows[MockDb.Cursor]
+
+	if len(result) != len(dest) {
+		return errors.New("Destination and Row value is different. Maybe column length is not same as values in rows")
+	}
+
 	for index, item := range result {
 		dest[index] = item
 	}
