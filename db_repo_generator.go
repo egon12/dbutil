@@ -1,6 +1,8 @@
 package dbutil
 
 import (
+	"errors"
+	"fmt"
 	. "github.com/dave/jennifer/jen"
 	"reflect"
 )
@@ -24,8 +26,10 @@ func generateRepository(packageName string, realEntity interface{}) (*File, erro
 
 	entity := reflect.TypeOf(realEntity)
 
-	// TODO, check entity must struct
-	// check entity must have fields
+	if entity.Kind() != reflect.Struct {
+		errMsg := fmt.Sprintf("%s is not a struct. We can only generate repository for a struct", entity.Name())
+		return nil, errors.New(errMsg)
+	}
 
 	file := NewFile(packageName)
 	file.Add(generateStruct(entity))
@@ -46,20 +50,8 @@ func generateRepository(packageName string, realEntity interface{}) (*File, erro
 		file.Add(code)
 	}
 
-	/*
-		file, err = createDeleteFunc(file, entity)
-		if err != nil {
-			return "", err
-		}
-	*/
-
 	return file, nil
 
-}
-
-func createFile(packageName string) (*File, error) {
-	f := NewFile(packageName)
-	return f, nil
 }
 
 func generateStruct(entity reflect.Type) Code {
