@@ -9,12 +9,14 @@ import (
 
 func GenerateRepository(packageName string, realEntity interface{}, filename string) error {
 
-	file, err := generateRepository(packageName, realEntity)
+	generator, err := NewRepoGenerator(packageName, realEntity, nil)
 	if err != nil {
 		return err
 	}
 
-	err = file.Save(filename)
+	generator.Generate()
+
+	err = generator.Save(filename)
 	if err != nil {
 		return err
 	}
@@ -22,22 +24,49 @@ func GenerateRepository(packageName string, realEntity interface{}, filename str
 	return nil
 }
 
-func generateRepository(packageName string, realEntity interface{}) (*File, error) {
+type IRepoGenerator interface {
+	Generate()
+	GoString()
+	Save(string)
+}
 
-	entity := reflect.TypeOf(realEntity)
+type RepoGenerator struct {
+	entity          reflect.Type
+	file            *File
+	fieldFilterFunc func(reflect.StructField) bool
+}
 
-	if entity.Kind() != reflect.Struct {
-		errMsg := fmt.Sprintf("%s is not a struct. We can only generate repository for a struct", entity.Name())
-		return nil, errors.New(errMsg)
+func NewRepoGenerator(
+	packageName string,
+	realEntity interface{},
+	fieldFilterFunc func(reflect.StructField) bool,
+) (*RepoGenerator, error) {
+
+	repoGenerator := RepoGenerator{}
+
+	repoGenerator.entity = reflect.TypeOf(realEntity)
+	if repoGenerator.entity.Kind() != reflect.Struct {
+		errMsg := fmt.Sprintf("%s is not a struct. We can only generate repository for a struct", repoGenerator.entity.Name())
+		return &repoGenerator, errors.New(errMsg)
 	}
 
-	file := NewFile(packageName)
-	file.Add(generateStruct(entity))
+	repoGenerator.file = NewFile(packageName)
+
+	repoGenerator.fieldFilterFunc = fieldFilterFunc
+
+	return &repoGenerator, nil
+}
+
+func (repoGenerator *RepoGenerator) Generate() {
+	file := repoGenerator.file
+	entity := repoGenerator.entity
+
+	file.Add(generateRepoStruct(entity))
 	file.Add(generateConstructor(entity))
 
 	file.Add(createSelectFunc(entity))
-
 	file.Add(createInsertFunc(entity))
+
 	file.Add(createUpdateFunc(entity))
 	file.Add(createDeleteFunc(entity))
 	file.Add(generateWhereFactoryStruct(entity))
@@ -49,13 +78,25 @@ func generateRepository(packageName string, realEntity interface{}) (*File, erro
 	for _, code := range generateWhereFactoryStandaloneFunctions(entity) {
 		file.Add(code)
 	}
-
-	return file, nil
-
 }
 
-func generateStruct(entity reflect.Type) Code {
-	return Type().Id(structName(entity)).Struct(
+func (repoGenerator *RepoGenerator) GoString() string {
+	return repoGenerator.file.GoString()
+}
+
+func (repoGenerator *RepoGenerator) Save(filename string) error {
+	return repoGenerator.file.Save(filename)
+}
+
+func (repoGenerator *RepoGenerator) getRepoName() string {
+	return "Postgre" + repoGenerator.entity.Name() + "Repository"
+}
+
+func generateRepoStruct(entity reflect.Type) Code {
+
+	repoName := getRepoName(entity)
+
+	return Type().Id(repoName).Struct(
 		Id("ReadWrite").Op("*").Add().Qual("database/sql", "DB"),
 		Id("ReadOnly").Op("*").Add().Qual("database/sql", "DB"),
 	)
@@ -63,7 +104,7 @@ func generateStruct(entity reflect.Type) Code {
 
 func generateConstructor(entity reflect.Type) Code {
 
-	name := structName(entity)
+	name := getRepoName(entity)
 
 	params := []Code{
 		Id("readWrite").Op("*").Add().Qual("database/sql", "DB"),
@@ -84,14 +125,11 @@ func generateConstructor(entity reflect.Type) Code {
 	)
 }
 
-func structName(entity reflect.Type) string {
-	return "Postgre" + entity.Name() + "Repository"
+func createRepoFunction(entity reflect.Type, functionName string, params, returnType []Code) *Statement {
+	receiver := getRepoName(entity)
+	return Func().Params(Id("r").Id(receiver)).Id(functionName).Params(params...).Params(returnType...)
 }
 
-func createRepoFunction(entity reflect.Type, functionName string, params, returnType []Code) *Statement {
-
-	receiver := structName(entity)
-
-	return Func().Params(Id("r").Id(receiver)).Id(functionName).Params(params...).Params(returnType...)
-
+func getRepoName(entity reflect.Type) string {
+	return "Postgre" + entity.Name() + "Repository"
 }

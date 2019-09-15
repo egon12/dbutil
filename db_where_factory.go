@@ -47,7 +47,7 @@ func generateWhereFactoryFunctions(entity reflect.Type) []Code {
 
 func generateWhereFactoryStandaloneFunctions(entity reflect.Type) []Code {
 
-	repoName := structName(entity)
+	repoName := getRepoName(entity)
 	structName := entity.Name() + "WhereFactory"
 
 	codes := []Code{}

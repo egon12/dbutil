@@ -8,13 +8,13 @@ import (
 	"testing"
 )
 
-func TestCreateFile(t *testing.T) {
-	file, err := generateRepository("generated", EntityExamples2{})
-	if err != nil {
-		t.Error(err)
-	}
+func Test_Generate_With_Generator(t *testing.T) {
 
-	fileContents := fmt.Sprintf("%#v", file)
+	generator, _ := NewRepoGenerator("generated", EntityExamples2{}, nil)
+
+	generator.Generate()
+
+	fileContents := fmt.Sprintf("%#v", generator)
 
 	expectedFileBytes, err := ioutil.ReadFile("./generated/entity_examples2_repo.go")
 	if err != nil {
@@ -24,7 +24,7 @@ func TestCreateFile(t *testing.T) {
 	expectedFileContents := string(expectedFileBytes)
 
 	if fileContents != expectedFileContents {
-		file.Save("/tmp/entity_examples2_repo.go")
+		generator.Save("/tmp/entity_examples2_repo.go")
 		t.Error("Generated is not same as 'generated/entity_examples2_repo.go'. Check with /tmp/entity_examples2_repo.go")
 	}
 }
@@ -32,7 +32,7 @@ func TestCreateFile(t *testing.T) {
 func Test_Entity_IsNotStruct(t *testing.T) {
 	falseEntity := ""
 
-	_, err := generateRepository("generated", falseEntity)
+	_, err := NewRepoGenerator("generated", falseEntity, nil)
 
 	if err == nil {
 		t.Error("It should be some error")
@@ -44,7 +44,7 @@ func Test_Error_Message_Should_Tell_Type(t *testing.T) {
 	type SomeType string
 
 	falseEntity := new(SomeType)
-	_, err := generateRepository("generated", *falseEntity)
+	_, err := NewRepoGenerator("generated", *falseEntity, nil)
 
 	if !strings.Contains(err.Error(), "SomeType") {
 		t.Error("Error should tell the type of entity. Got: " + err.Error())
