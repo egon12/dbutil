@@ -13,7 +13,7 @@ var (
 
 func main() {
 
-	importName, fullEntityName, packageName, fileName, customArguments := parseArguments()
+	importName, fullEntityName, packageName, fileName, customArguments, deleteGenerator := parseArguments()
 
 	if fullEntityName == "" {
 		fmt.Printf("GenRepo need 'entity' real: %s \n\n", fullEntityName)
@@ -33,7 +33,9 @@ func main() {
 	)
 
 	createFile(compiledScript)
-	defer removeFile()
+	if deleteGenerator == "true" {
+		defer removeFile()
+	}
 
 	runCommand := exec.Command("go", "run", "generate.go", customArguments)
 	result, err := runCommand.Output()
@@ -43,7 +45,7 @@ func main() {
 	}
 }
 
-func parseArguments() (string, string, string, string, string) {
+func parseArguments() (string, string, string, string, string, string) {
 
 	var importName string
 	flag.StringVar(&importName, "import", "", "Package to be import")
@@ -60,9 +62,12 @@ func parseArguments() (string, string, string, string, string) {
 	var customArguments string
 	flag.StringVar(&customArguments, "arg", "", "Arguments add when run generate")
 
+	var deleteGenerator string
+	flag.StringVar(&deleteGenerator, "delete-generator", "true", "Should delete generate.go when run generate")
+
 	flag.Parse()
 
-	return importName, fullEntityName, packageName, fileName, customArguments
+	return importName, fullEntityName, packageName, fileName, customArguments, deleteGenerator
 }
 
 func createFile(compiledScript string) {
