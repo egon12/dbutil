@@ -152,14 +152,11 @@ func (d DbColumnGetter) GetColumns(tableName string) ([]*sql.ColumnType, error) 
 		return result, err
 	}
 
-	fmt.Printf("%+v\n", rows)
-
 	result, err = rows.ColumnTypes()
 	if err != nil {
 		return result, err
 	}
 
-	fmt.Printf("%+v\n", result)
 	return result, nil
 }
 
