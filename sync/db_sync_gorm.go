@@ -1,7 +1,7 @@
-package dbutil
+package sync
 
 import (
-	//"database/sql"
+	"database/sql"
 	"errors"
 	"fmt"
 	"reflect"
@@ -13,12 +13,16 @@ type mysqlGormColumn struct {
 	Type string
 }
 
+type SyncUtilGorm struct {
+	Db *sql.DB
+}
+
 // CheckTable CheckTable is exists and have columns that ready to filled with Field from struct
-func CheckTableGorm(entity interface{}) error {
+func (s SyncUtilGorm) CheckTableGorm(entity interface{}) error {
 
 	entityType := reflect.TypeOf(entity)
 
-	columns, err := getDbColumnsGorm(entityType)
+	columns, err := s.getDbColumnsGorm(entityType)
 	if err != nil {
 		return err
 	}
@@ -47,14 +51,14 @@ func CheckTableGorm(entity interface{}) error {
 	return nil
 }
 
-func getDbColumnsGorm(entity reflect.Type) ([]mysqlGormColumn, error) {
+func (s SyncUtilGorm) getDbColumnsGorm(entity reflect.Type) ([]mysqlGormColumn, error) {
 
 	var err error
 	var result []mysqlGormColumn
 
 	query := queryDescribeGorm(entity)
 
-	rows, err := Db.Query(query)
+	rows, err := s.Db.Query(query)
 	if err != nil {
 		return result, err
 	}

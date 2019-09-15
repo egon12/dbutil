@@ -1,7 +1,8 @@
-package dbutil
+package sync
 
 import (
 	"database/sql"
+	"github.com/egon12/dbutil/mock"
 	"reflect"
 	"testing"
 )
@@ -11,33 +12,38 @@ type EntityExamples1 struct {
 	Name string
 }
 
+var (
+	mockDb *mock.MockDbDriver
+	db     *sql.DB
+)
+
 func init() {
-	sql.Register("mockDriver", MockDb)
+	mockDb = &mock.MockDbDriver{}
+
+	sql.Register("mockDriver", mockDb)
+
+	db, _ = sql.Open("mockDriver", "")
 }
 
 func TestGetDbColumns(t *testing.T) {
-	// Register the DB
-	Db, _ = sql.Open("mockDriver", "")
+	getter := DbColumnGetter{db}
 
-	ex := EntityExamples1{}
-	entity := reflect.TypeOf(ex)
+	mockDb.ColumnsValue = []string{"id", "name"}
 
-	MockDb.ColumnsValue = []string{"id", "name"}
-
-	columns, _ := getDbColumns(entity)
+	columns, _ := getter.GetColumns("entity_examples1")
 
 	if columns[0].Name() != "id" && columns[1].Name() != "name" {
 		t.Error("The Column should be 'id, name' got:", columns)
 	}
 
-	if MockDb.QueryValue != "SELECT * FROM entity_examples1 LIMIT 1;" {
-		t.Error("Query is not same got:", MockDb.QueryValue)
+	if mockDb.QueryValue != "SELECT * FROM entity_examples1 LIMIT 1;" {
+		t.Error("Query is not same got:", mockDb.QueryValue)
 	}
 }
 
 func TestGetFields(t *testing.T) {
-
 	ex := EntityExamples1{}
+
 	entity := reflect.TypeOf(ex)
 
 	fields, _ := getFields(entity)
@@ -79,28 +85,30 @@ func TestGetFieldsNestedClass(t *testing.T) {
 }
 
 func TestCheckTable(t *testing.T) {
-	Db, _ = sql.Open("mockDriver", "")
 
 	ex := EntityExamples1{}
 
-	MockDb.ColumnsValue = []string{"id", "name"}
-	MockDb.ColumnsTypeValue = []reflect.Type{reflect.TypeOf(ex.ID), reflect.TypeOf(ex.Name)}
+	s := SyncUtils{db}
 
-	err := CheckTable(ex)
+	mockDb.ColumnsValue = []string{"id", "name"}
+	mockDb.ColumnsTypeValue = []reflect.Type{reflect.TypeOf(ex.ID), reflect.TypeOf(ex.Name)}
+
+	err := s.CheckTable(ex)
 	if err != nil {
-		t.Error("it should be not error", err)
+		t.Error("It should be not error:", err)
 	}
 }
 
 func TestCheckTableDbColumnsNotComplete(t *testing.T) {
-	Db, _ = sql.Open("mockDriver", "")
 
 	ex := EntityExamples1{}
 
-	MockDb.ColumnsValue = []string{"id"}
-	MockDb.ColumnsTypeValue = []reflect.Type{reflect.TypeOf(ex.ID)}
+	s := SyncUtils{db}
 
-	err := CheckTable(ex)
+	mockDb.ColumnsValue = []string{"id"}
+	mockDb.ColumnsTypeValue = []reflect.Type{reflect.TypeOf(ex.ID)}
+
+	err := s.CheckTable(ex)
 	if err == nil {
 		t.Error("It should be error")
 	}
@@ -108,40 +116,40 @@ func TestCheckTableDbColumnsNotComplete(t *testing.T) {
 
 func TestCreateTable(t *testing.T) {
 
-	Db, _ = sql.Open("mockDriver", "")
+	s := SyncUtils{db}
 
 	ex := EntityExamples1{}
 
-	MockDb.ColumnsValue = []string{"id"}
-	MockDb.ColumnsTypeValue = []reflect.Type{reflect.TypeOf(ex.ID)}
+	mockDb.ColumnsValue = []string{"id"}
+	mockDb.ColumnsTypeValue = []reflect.Type{reflect.TypeOf(ex.ID)}
 
-	err := CreateTable(ex)
+	err := s.CreateTable(ex)
 	if err != nil {
 		t.Error("It should be not error")
 	}
 
-	if MockDb.QueryValue != "CREATE TABLE entity_examples1 (id SERIAL8, name VARCHAR(255));" {
-		t.Error("Wrong Query :", MockDb.QueryValue)
+	if mockDb.QueryValue != "CREATE TABLE entity_examples1 (id SERIAL8, name VARCHAR(255));" {
+		t.Error("Wrong Query :", mockDb.QueryValue)
 	}
 
 }
 
 func TestDropTable(t *testing.T) {
 
-	Db, _ = sql.Open("mockDriver", "")
+	s := SyncUtils{db}
 
 	ex := EntityExamples1{}
 
-	MockDb.ColumnsValue = []string{"id"}
-	MockDb.ColumnsTypeValue = []reflect.Type{reflect.TypeOf(ex.ID)}
+	mockDb.ColumnsValue = []string{"id"}
+	mockDb.ColumnsTypeValue = []reflect.Type{reflect.TypeOf(ex.ID)}
 
-	err := CreateTable(ex)
+	err := s.CreateTable(ex)
 	if err != nil {
 		t.Error("It should be not error")
 	}
 
-	if MockDb.QueryValue != "CREATE TABLE entity_examples1 (id SERIAL8, name VARCHAR(255));" {
-		t.Error("Wrong Query :", MockDb.QueryValue)
+	if mockDb.QueryValue != "CREATE TABLE entity_examples1 (id SERIAL8, name VARCHAR(255));" {
+		t.Error("Wrong Query :", mockDb.QueryValue)
 	}
 
 }

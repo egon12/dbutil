@@ -1,4 +1,4 @@
-package dbutil
+package sync
 
 import (
 	"database/sql"
@@ -8,52 +8,64 @@ import (
 	"reflect"
 )
 
-// Db place to inject the Db..
-// To use it, we need to inject the Db first
-// for ex:
-//
-// ```
-// utils.Db = db
-// utils.CheckTable(Entity{})
-// ```
-var Db *sql.DB
+// To Use the sync
+// s := SyncUtils{db}
+// s.InteractiveSync(entityExamples{})
 
-func InteractiveSync(entity interface{}) {
-	err := CheckTable(entity)
-	if err != nil {
-		fmt.Println(err)
-		fmt.Print("Do you want to drop and recreate table entity? [y/n] :")
-		answer := ""
-		fmt.Scanln(&answer)
-		if answer == "y" {
-			DropTable(entity)
-
-			err2 := CreateTable(entity)
-			if err2 != nil {
-				fmt.Println(err2)
-			}
-		}
+type (
+	SyncUtils struct {
+		Db *sql.DB
 	}
+
+	ISyncUtils interface {
+		InteractiveSync(entity interface{})
+		ForceSync(entity interface{})
+		CheckTable(entity interface{}) error
+		DropTable(entity interface{}) error
+		CreateTable(entity interface{}) error
+	}
+)
+
+func (s SyncUtils) InteractiveSync(entity interface{}) {
+	var err error
+
+	if err = s.CheckTable(entity); err == nil {
+		return
+	}
+
+	fmt.Println(err)
+	fmt.Print("Do you want to drop and recreate table entity? [y/n] :")
+
+	var answer string
+	if fmt.Scanln(&answer); answer != "y" {
+		return
+	}
+
+	s.RecreateTable(entity)
 }
 
-func ForceSync(entity interface{}) {
-	err := CheckTable(entity)
-	if err != nil {
-		fmt.Println(err)
-		DropTable(entity)
-		err2 := CreateTable(entity)
-		if err2 != nil {
-			fmt.Println(err2)
-		}
+func (s SyncUtils) ForceSync(entity interface{}) {
+	var err error
+
+	if err = s.CheckTable(entity); err == nil {
+		return
 	}
+
+	fmt.Println(err)
+
+	s.RecreateTable(entity)
 }
 
 // CheckTable CheckTable is exists and have columns that ready to filled with Field from struct
-func CheckTable(entity interface{}) error {
+func (s SyncUtils) CheckTable(entity interface{}) error {
 
 	entityType := reflect.TypeOf(entity)
 
-	columns, err := getDbColumns(entityType)
+	getter := DbColumnGetter{s.Db}
+
+	tableName := ToSnakeCase(entityType.Name())
+
+	columns, err := getter.GetColumns(tableName)
 	if err != nil {
 		return err
 	}
@@ -71,9 +83,7 @@ func CheckTable(entity interface{}) error {
 	}
 
 	for i := range fields {
-		column := columns[i]
-		field := fields[i]
-		err = isSame(column, field, i)
+		err = isSame(columns[i], fields[i], i)
 		if err != nil {
 			return err
 		}
@@ -83,7 +93,7 @@ func CheckTable(entity interface{}) error {
 }
 
 // DropTable just drop the table
-func DropTable(entity interface{}) error {
+func (s SyncUtils) DropTable(entity interface{}) error {
 
 	entityType := reflect.TypeOf(entity)
 
@@ -91,13 +101,13 @@ func DropTable(entity interface{}) error {
 
 	query := fmt.Sprintf("DROP TABLE %s;", tableName)
 
-	_, err := Db.Exec(query)
+	_, err := s.Db.Exec(query)
 
 	return err
 }
 
 // CreateTable create table with columns as same as field
-func CreateTable(entity interface{}) error {
+func (s SyncUtils) CreateTable(entity interface{}) error {
 	entityType := reflect.TypeOf(entity)
 
 	columns := []string{}
@@ -111,13 +121,46 @@ func CreateTable(entity interface{}) error {
 
 	query := getCreateSQL(tableName, columns)
 
-	_, err := Db.Exec(query)
+	_, err := s.Db.Exec(query)
 
 	if err != nil {
 		return errors.New(err.Error() + " query: " + query)
 	}
 
 	return nil
+}
+
+func (s SyncUtils) RecreateTable(entity interface{}) {
+	s.DropTable(entity)
+	if err := s.CreateTable(entity); err != nil {
+		fmt.Println(err)
+	}
+}
+
+type DbColumnGetter struct {
+	Db *sql.DB
+}
+
+func (d DbColumnGetter) GetColumns(tableName string) ([]*sql.ColumnType, error) {
+	var err error
+	var result []*sql.ColumnType
+
+	query := fmt.Sprintf("SELECT * FROM %s LIMIT 1;", tableName)
+
+	rows, err := d.Db.Query(query)
+	if err != nil {
+		return result, err
+	}
+
+	fmt.Printf("%+v\n", rows)
+
+	result, err = rows.ColumnTypes()
+	if err != nil {
+		return result, err
+	}
+
+	fmt.Printf("%+v\n", result)
+	return result, nil
 }
 
 func getCreateSQL(tableName string, columns []string) string {
@@ -192,26 +235,6 @@ func processString(field reflect.StructField) string {
 	}
 
 	return fmt.Sprintf("%s VARCHAR(%s)", ToSnakeCase(field.Name), length)
-}
-
-func getDbColumns(entity reflect.Type) ([]*sql.ColumnType, error) {
-
-	var err error
-	var result []*sql.ColumnType
-
-	query := querySelect(entity)
-
-	rows, err := Db.Query(query)
-	if err != nil {
-		return result, err
-	}
-
-	result, err = rows.ColumnTypes()
-	if err != nil {
-		return result, err
-	}
-
-	return result, nil
 }
 
 func querySelect(entity reflect.Type) string {
