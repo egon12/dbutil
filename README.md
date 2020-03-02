@@ -44,30 +44,5 @@ go run sync.go
 
 ## Repository Generator
 
-Put this script into file like `generate.go`
-
-``` Golang
-package main
-
-import (
-	"yourdomain"
-	"github.com/egon12/dbutil"
-	"log"
-)
-
-func main() {
-
-	emptyEntity := yourdomain.Entity{}
-	err := dbutil.GenerateRepository("gateway", emptyEntity, "./gateway/repository.go")
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-```
-
-and then execute
-
-```
-go run generate.go
-```
+You can use genrepo from cmd, please fill the paramter to create the repo
 

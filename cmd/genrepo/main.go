@@ -87,15 +87,6 @@ func removeFile() {
 	}
 }
 
-var script1 = `
-package main
-
-func main() {
-	println("Hello World!!!\n")
-}
-
-`
-
 var script = `
 
 package main
